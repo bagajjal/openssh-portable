@@ -1,4 +1,4 @@
-﻿param (
+param (
     [string] $paths_target_file_path,
     [string] $destDir,
     [switch] $override
@@ -26,31 +26,35 @@ elseif (Test-Path (Join-Path $destDir "ZLib") -PathType Container)
     return
 }
 
-Write-Host "Downloading ZLIB"
+[xml] $buildConfig = Get-Content $paths_target_file_path
+$version = "V" +$buildConfig.Project.PropertyGroup.ZLibVersion
+
+Write-Host "Downloading ZLIB version:$version"
 Write-Host "paths_target_file_path:$paths_target_file_path"
 Write-Host "destDir:$destDir"
 Write-Host "override:$override"
-
-[xml] $buildConfig = Get-Content $paths_target_file_path
-$version = $buildConfig.Project.PropertyGroup.ZLibVersion
 
 $zip_path = Join-Path $PSScriptRoot "ZLib.zip"
 $release_url = "https://github.com/PowerShell/zlib/releases/download/$version/zlib.zip"
 Write-Host "release_url:$release_url"
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor `
+                                              [Net.SecurityProtocolType]::Tls11 -bor `
+                                              [Net.SecurityProtocolType]::Tls
+
 Remove-Item $zip_path -Force -ErrorAction SilentlyContinue
-Invoke-WebRequest -Uri $release_url -OutFile $zip_path 
+Invoke-WebRequest -Uri $release_url -OutFile $zip_path -UseBasicParsing
 if(-not (Test-Path $zip_path))
 {
-    throw "failed to download ZLIB zip file"
+    throw "failed to download ZLIB version:$version"
 }
 
 Expand-Archive -Path $zip_path -DestinationPath $destDir -Force -ErrorAction SilentlyContinue -ErrorVariable e
 if($e -ne $null)
 {
-    throw "Error when expand zip file"
+    throw "Error when expand zip file. ZLIB version:$version"
 }
 
 Remove-Item $zip_path -Force -ErrorAction SilentlyContinue
 
-Write-Host "Succesfully downloaded ZLIB"
+Write-Host "Succesfully downloaded ZLIB version:$version"

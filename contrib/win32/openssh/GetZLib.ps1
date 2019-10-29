@@ -27,7 +27,7 @@ elseif (Test-Path (Join-Path $destDir "ZLib") -PathType Container)
 }
 
 [xml] $buildConfig = Get-Content $paths_target_file_path
-$version = "V" +$buildConfig.Project.PropertyGroup.ZLibVersion
+$version = "V" + $buildConfig.Project.PropertyGroup.ZLibVersion
 
 Write-Host "Downloading ZLIB version:$version"
 Write-Host "paths_target_file_path:$paths_target_file_path"

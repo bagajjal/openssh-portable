@@ -1257,7 +1257,7 @@ posix_spawn_internal(pid_t *pidp, const char *path, const posix_spawn_file_actio
 
 	if (_putenv_s(POSIX_FD_STATE, fd_info) != 0)
 		goto cleanup;
-	i = spawn_child_internal(argv[0], argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, prepend_module_path);
+	i = spawn_child_internal(path, argv + 1, stdio_handles[STDIN_FILENO], stdio_handles[STDOUT_FILENO], stdio_handles[STDERR_FILENO], sc_flags, user_token, prepend_module_path);
 	if (i == -1)
 		goto cleanup;
 	if (pidp)

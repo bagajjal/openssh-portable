@@ -352,6 +352,10 @@ stop_sshd ()
 
 make_tmpdir ()
 {
+	if [ "$os" == "windows" ]; then
+		powershell.exe /c "New-Item -Path $OBJ\openssh-XXXXXXXX -ItemType Directory -Force" >/dev/null 2>&1
+		return
+	fi
 	SSH_REGRESS_TMP="$($OBJ/mkdtemp openssh-XXXXXXXX)" || \
 	    fatal "failed to create temporary directory"
 }
@@ -504,6 +508,7 @@ rm -f $OBJ/known_hosts $OBJ/authorized_keys_$USER
 
 SSH_KEYTYPES=`$SSH -Q key-plain`
 if [ "$os" == "windows" ]; then
+	SSH_KEYTYPES=`echo $SSH_KEYTYPES | tr -d '\r','\n'`  # remove \r\n
 	first_key_type=${SSH_KEYTYPES%% *}
 	if [ "x$USER_DOMAIN" != "x" ]; then
 		# For domain user, create folders

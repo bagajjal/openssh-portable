@@ -1738,6 +1738,7 @@ build_commandline_string(const char* cmd, char *const argv[], BOOLEAN prepend_mo
 	if (is_bash_test_env()) {
 		memset(path, 0, path_len + 1);
 		bash_to_win_path(cmd, path, path_len + 1);
+		path_len = (DWORD)strlen(path);
 	}
 
 	if (!is_absolute_path(path) && prepend_module_path)

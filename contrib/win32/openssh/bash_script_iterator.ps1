@@ -154,7 +154,7 @@ try
 	# remove, create the temp test directory
 	$temp_test_path="temp_test"
 	$null = Remove-Item -Recurse -Force $temp_test_path -ErrorAction SilentlyContinue
-	$null = New-Item -ItemType directory -Path $temp_test_path -ErrorAction Stop
+	$null = New-Item -ItemType directory -Path $temp_test_path -Force -ErrorAction Stop
 
 	# remove the summary, output files.
 	$test_summary="$ArtifactsPath\\bashtest_summary.txt"

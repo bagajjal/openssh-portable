@@ -576,8 +576,6 @@ if [ "$os" == "windows" ]; then
 	powershell.exe /c "get-acl $OBJ_WIN_FORMAT/$first_key_type | set-acl $OBJ_WIN_FORMAT/authorized_keys_$USER"
 fi
 
-echo "BALU - TEST ACLs"
-exit
 # Activate Twisted Conch tests if the binary is present
 REGRESS_INTEROP_CONCH=no
 if test -x "$CONCH" ; then

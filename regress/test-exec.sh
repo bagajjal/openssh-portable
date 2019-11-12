@@ -534,9 +534,14 @@ if [ "$os" == "windows" ]; then
 	fi
 fi
 
+if [ "$os" == "windows" ]; then
+	OBJ_WIN_FORMAT=`windows_path $OBJ`
+fi
+
 for t in ${SSH_KEYTYPES}; do
 	# generate user key
 	trace "generating key type $t"
+
 	if [ ! -f $OBJ/$t ] || [ ${SSHKEYGEN_BIN} -nt $OBJ/$t ]; then
 		rm -f $OBJ/$t
 		${SSHKEYGEN} -q -N '' -t $t  -f $OBJ/$t ||\
@@ -557,7 +562,7 @@ for t in ${SSH_KEYTYPES}; do
 	$SUDO cp $OBJ/$t $OBJ/host.$t
 	if [ "$os" == "windows" ]; then
 		# set the file permissions (ACLs) properly
-		powershell.exe /c "get-acl `windows_path $OBJ`/$t | set-acl `windows_path $OBJ`/host.$t"
+		powershell.exe /c "get-acl $OBJ_WIN_FORMAT/$t | set-acl $OBJ_WIN_FORMAT/host.$t"
 	fi
 
 	echo HostKey $OBJ/host.$t >> $OBJ/sshd_config
@@ -568,9 +573,11 @@ done
 
 if [ "$os" == "windows" ]; then
 	# set the file permissions (ACLs) properly
-	powershell.exe /c "get-acl `windows_path $OBJ`/$first_key_type | set-acl `windows_path $OBJ`/authorized_keys_$USER"
+	powershell.exe /c "get-acl $OBJ_WIN_FORMAT/$first_key_type | set-acl $OBJ_WIN_FORMAT/authorized_keys_$USER"
 fi
 
+echo "BALU - TEST ACLs"
+exit
 # Activate Twisted Conch tests if the binary is present
 REGRESS_INTEROP_CONCH=no
 if test -x "$CONCH" ; then
@@ -631,7 +638,7 @@ fi
 (
 	cat $OBJ/ssh_config
 	if [ "$os" == "windows" ]; then
-		echo proxycommand  `windows_path ${SSHD}` -i -f `windows_path $OBJ`/sshd_proxy
+		echo proxycommand  `windows_path ${SSHD}` -i -f $OBJ_WIN_FORMAT/sshd_proxy
 	else
 		echo proxycommand ${SUDO} sh ${SRC}/sshd-log-wrapper.sh ${TEST_SSHD_LOGFILE} ${SSHD} -i -f $OBJ/sshd_proxy
 	fi

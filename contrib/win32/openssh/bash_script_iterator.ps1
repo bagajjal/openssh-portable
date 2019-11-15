@@ -167,13 +167,7 @@ try
 	[string]$failed_testcases = [string]::Empty
 	
 	# These are the known failed testcases.
-	#   agent.sh, krl.sh - User Cert authentication fails
-	#   key-options.sh - pty testcases are failing (bug in conpty. conpty fails to launch cygwin bash)
-	#   integrity.sh - It's dependent on regress\modpipe.exe, test is complicated. Need to debug more
-	#   authinfo.sh - spawned conpty inherits all the environment variables from sshd.
-	#   forward-control.sh - Need to debug more.
-	#   cfgmatchlisten.sh - TODO-investigate as it used to pass earlier
-	[string]$known_failed_testcases = "agent.sh key-options.sh forward-control.sh integrity.sh krl.sh authinfo.sh cfgmatchlisten.sh"
+	[string]$known_failed_testcases = "agent.sh key-options.sh forward-control.sh integrity.sh krl.sh authinfo.sh"
 	[string]$known_failed_testcases_skipped = [string]::Empty
 
 	$start_time = (Get-Date)

@@ -364,10 +364,13 @@ make_tmpdir ()
 {
 	if [ "$os" == "windows" ]; then
 		powershell.exe /c "New-Item -Path $OBJ\openssh-XXXXXXXX -ItemType Directory -Force" >/dev/null 2>&1
-		return
+		if [ $? -ne 0 ]; then
+			fatal "failed to create temporary directory"
+		fi
+	else
+		SSH_REGRESS_TMP="$($OBJ/mkdtemp openssh-XXXXXXXX)" || \
+			fatal "failed to create temporary directory"
 	fi
-	SSH_REGRESS_TMP="$($OBJ/mkdtemp openssh-XXXXXXXX)" || \
-	    fatal "failed to create temporary directory"
 }
 
 # helper

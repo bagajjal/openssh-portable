@@ -192,8 +192,6 @@ try
 			}
 		}
 
-		# (Get-Content $TEST -Raw).Replace("`r`n","`n") | Set-Content $TEST -Force
-
 		$test_case_name = [System.IO.Path]::GetFileName($TEST)
 		if($known_failed_testcases.Contains($test_case_name))
 		{

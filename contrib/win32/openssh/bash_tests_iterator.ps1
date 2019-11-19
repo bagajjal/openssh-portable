@@ -7,16 +7,21 @@ param (
 	[Parameter(Mandatory=$true)] [string] $ShellPath,
 	# Individual bash test file (Ex - connect.sh)
 	[Parameter(Mandatory=$false)] [string[]] $TestFilePath,
-	[Parameter(Mandatory=$false)] [string] $ArtifactsPath=".",
+	[Parameter(Mandatory=$false)] [string] $ArtifactsDirectoryPath=".",
 	[switch] $SkipCleanup,
 	[switch] $SkipInstallSSHD
 )
+
+Write-Host "`nInput params.. OpenSSHBinPath:$OpenSSHBinPath"
+Write-Host "bashtestspath:$BashTestsPath"
+Write-Host "ShellPath:$ShellPath"
+Write-Host "ArtifactsDirectoryPath:$ArtifactsDirectoryPath`n"
 
 # Resolve the relative paths
 $OpenSSHBinPath=resolve-path $OpenSSHBinPath -ErrorAction Stop | select -ExpandProperty Path
 $BashTestsPath=resolve-path $BashTestsPath -ErrorAction Stop | select -ExpandProperty Path
 $ShellPath=resolve-path $ShellPath -ErrorAction Stop | select -ExpandProperty Path
-$ArtifactsPath=resolve-path $ArtifactsPath -ErrorAction Stop | select -ExpandProperty Path
+$ArtifactsDirectoryPath=resolve-path $ArtifactsDirectoryPath -ErrorAction Stop | select -ExpandProperty Path
 if ($TestFilePath) {
 	$TestFilePath=resolve-path $TestFilePath -ErrorAction Stop | select -ExpandProperty Path
 	# convert to bash format
@@ -73,20 +78,23 @@ try
 		Write-Output "User configured default shell: $user_default_shell"
 	}
 
-	if (!(Test-Path $registryPath)) {
-		# start and stop the sshd so that "HKLM:\Software\OpenSSH" registry path is created.
-		Start-Service sshd -ErrorAction Stop
-		Stop-Service sshd -ErrorAction SilentlyContinue
-	}
+	if($user_default_shell -ne $ShellPath)
+	{
+		if (!(Test-Path $registryPath)) {
+			# start and stop the sshd so that "HKLM:\Software\OpenSSH" registry path is created.
+			Start-Service sshd -ErrorAction Stop
+			Stop-Service sshd -ErrorAction SilentlyContinue
+		}
 
-	Set-ItemProperty -Path $registryPath -Name $dfltShell -Value $ShellPath -Force
-	$out=(Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
-	if($out.$dfltShell -ne $ShellPath) {
-		Write-Output "Failed to set HKLM:\Software\OpenSSH\DefaultShell to $ShellPath"
-		exit
-	}
+		Set-ItemProperty -Path $registryPath -Name $dfltShell -Value $ShellPath -Force
+		$out=(Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
+		if($out.$dfltShell -ne $ShellPath) {
+			Write-Output "Failed to set HKLM:\Software\OpenSSH\DefaultShell to $ShellPath"
+			exit
+		}
 
-	Write-Output "Successfully set the default HKLM:\Software\OpenSSH\DefaultShell to $ShellPath"
+		Write-Output "Successfully set the default shell (HKLM:\Software\OpenSSH\DefaultShell) to $ShellPath"
+	}
 
 	# Prepend shell path to PATH. This is required to make the shell commands (like sleep, cat, etc) work properly.
 	$env:TEST_SHELL_PATH=$ShellPath -replace "\\","/"
@@ -157,8 +165,8 @@ try
 	$null = New-Item -ItemType directory -Path $temp_test_path -Force -ErrorAction Stop
 
 	# remove the summary, output files.
-	$test_summary="$ArtifactsPath\\bashtest_summary.txt"
-	$test_output="$ArtifactsPath\\bashtest_output.txt"
+	$test_summary="$ArtifactsDirectoryPath\bashtest_summary.txt"
+	$test_output="$ArtifactsDirectoryPath\bashtest_output.txt"
 	$null = Remove-Item -Force $test_summary -ErrorAction SilentlyContinue
 	$null = Remove-Item -Force $test_output -ErrorAction SilentlyContinue
 	[int]$total_tests = 0
@@ -167,8 +175,8 @@ try
 	[string]$failed_testcases = [string]::Empty
 	
 	# These are the known failed testcases.
-	[string]$known_failed_testcases = "agent.sh key-options.sh forward-control.sh integrity.sh krl.sh authinfo.sh"
-	[string]$known_failed_testcases_skipped = [string]::Empty
+	$known_failed_testcases = @("agent.sh", "key-options.sh", "forward-control.sh", "integrity.sh", "krl.sh", "authinfo.sh")
+	$known_failed_testcases_skipped = @()
 
 	$start_time = (Get-Date)
 
@@ -180,6 +188,8 @@ try
 		# TODO - check if gawk.exe is present in WSL.
 		$all_tests=gawk.exe 'sub(/.*LTESTS=/,""""){f=1} f{print $1; if (!/\\\\/) exit}' Makefile 
 	}
+
+	Write-Output ""
 
 	foreach($test_case in $all_tests) {
 		if($TestFilePath) {
@@ -195,14 +205,14 @@ try
 		$test_case_name = [System.IO.Path]::GetFileName($TEST)
 		if($known_failed_testcases.Contains($test_case_name))
 		{
-			Write-Output "Skip the known failed test:$test_case_name"
-			$known_failed_testcases_skipped = $known_failed_testcases_skipped + "$test_case_name "
+			Write-Output "Skip the known failed test:$test_case_name [$($all_tests.IndexOf($test_case) + 1) of $($all_tests.count)]"
+			$known_failed_testcases_skipped +=  "$test_case_name"
 		}
 		else
 		{
-			$msg="Executing $test_case_name " +[System.DateTime]::Now
+			$msg="Executing $test_case_name [$($all_tests.IndexOf($test_case) + 1) of $($all_tests.count)] " + [System.DateTime]::Now
 			Write-Output $msg
-			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST" #>$null 2>&1
+			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST"
 			if($?)
 			{
 				$msg="$test_case_name PASSED " +[System.DateTime]::Now
@@ -223,21 +233,26 @@ try
 	$end_time = (Get-Date)
 
 	# Create artifacts
-	"Start time: $start_time" | Out-File -FilePath $test_summary -Append
-	"End time: $end_time" | Out-File -FilePath $test_summary -Append
-	"Total execution time: " + (NEW-TIMESPAN -Start $start_time -End $end_time).ToString("hh\:mm\:ss") | Out-File -FilePath $test_summary -Append
-	"Tests executed: $total_tests" | Out-File -FilePath $test_summary -Append
-	"Tests passed: $total_tests_passed" | Out-File -FilePath $test_summary -Append
-	"Tests failed: $total_tests_failed" | Out-File -FilePath $test_summary -Append
-	"Failed tests: $failed_testcases" | Out-File -FilePath $test_summary -Append
-	"Skipped known failed tests: $known_failed_testcases_skipped" | Out-File -FilePath $test_summary -Append
+	$Global:bash_tests_summary = [ordered]@{
+		"StartTime" = $start_time.ToString();
+		"EndTime" = $end_time.ToString();
+		"TotalExecutionTime" = (NEW-TIMESPAN -Start $start_time -End $end_time).ToString("hh\:mm\:ss");
+		"TotalBashTests" = $total_tests;
+		"TotalBashTestsPassed" = $total_tests_passed;
+		"TotalBashTestsFailed" = $total_tests_failed;
+		"TotalBashTestsSkipped" = $known_failed_testcases_skipped.Count;
+		"FailedBashTests" = $failed_testcases;
+		"SkippedBashTests" = $known_failed_testcases_skipped -join ', ';
+		"BashTestSummaryFile" = $test_summary
+	}
 
-	Write-Output "Artifacts are saved to $ArtifactsPath"
+	$Global:bash_tests_summary | ConvertTo-Json | Out-File -FilePath $test_summary
 
 	#output the summary
-	Write-Output "================================="
+	Write-Output "`nArtifacts are saved to $test_summary"
+	Write-Output "============================================"
 	cat $test_summary
-	Write-Output "================================="
+	Write-Output "============================================`n"
 }
 finally
 {

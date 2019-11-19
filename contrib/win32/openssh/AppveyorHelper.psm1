@@ -347,7 +347,31 @@ function Invoke-OpenSSHTests
         Set-BuildVariable TestPassed False
         Write-Warning "Stop running further tests!"
         return
-    }    
+    }
+
+    # Run UNIX bash tests.
+    Invoke-OpenSSHBashTests
+    if (-not $Global:bash_tests_summary)
+    {
+        $errorMessage = "Failed to start OpenSSH bash tests"
+        Write-Warning $errorMessage
+        Write-BuildMessage -Message $errorMessage -Category Error
+        Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
+    }
+
+    if ($Global:bash_tests_summary["TotalBashTestsFailed"] -ne 0)
+    {
+        $total_bash_failed_tests = $Global:bash_tests_summary["TotalBashTestsFailed"]
+        $total_bash_tests = $Global:bash_tests_summary["TotalBashTests"]
+        $errorMessage = "At least one of the bash tests failed. [$total_bash_failed_tests of $total_bash_tests]"
+        Write-Warning $errorMessage
+        Write-BuildMessage -Message $errorMessage -Category Error
+        Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
+    }
 
     Invoke-OpenSSHUninstallTest
     if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["UninstallTestResultsFile"])))
@@ -401,6 +425,13 @@ function Publish-OpenSSHTestResults
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $uninstallResultFile)
              Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
+        }
+
+        $bashTestSummaryFile = Resolve-Path $Global:bash_tests_summary["BashTestSummaryFile"] -ErrorAction Ignore
+        if( (Test-Path $Global:OpenSSHTestInfo["BashTestSummaryFile"]) -and $bashTestSummaryFile)
+        {
+            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $bashTestSummaryFile)
+             Write-BuildMessage -Message "Bash test results uploaded!" -Category Information
         }
     }
 

@@ -24,11 +24,13 @@ $Script:E2ETestResultsFile = Join-Path $TestDataPath $E2ETestResultsFileName
 $Script:UnitTestResultsFile = Join-Path $TestDataPath $UnitTestResultsFileName
 $Script:TestSetupLogFile = Join-Path $TestDataPath $TestSetupLogFileName
 $Script:E2ETestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress\pesterTests"
+$Script:BashTestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress"
 $Script:E2ETestDataDirectory = Join-Path $Script:E2ETestDirectory data
 $Script:WindowsInBox = $false
 $Script:NoLibreSSL = $false
 $Script:EnableAppVerifier = $true
 $Script:PostmortemDebugging = $false
+$Script:BashPath = $null
 
 <#
     .Synopsis
@@ -41,7 +43,7 @@ function Set-OpenSSHTestEnvironment
     param
     (   
         [string] $OpenSSHBinPath,
-        [string] $TestDataPath = "$env:SystemDrive\OpenSSHTests",        
+        [string] $TestDataPath = "$env:SystemDrive\OpenSSHTests",
         [Switch] $DebugMode,
         [Switch] $NoAppVerifier,
         [Switch] $PostmortemDebugging,
@@ -67,7 +69,6 @@ function Set-OpenSSHTestEnvironment
     $Global:OpenSSHTestInfo.Add("PasswdUser", $PasswdUser)                             # test user to be used for password auth
     $Global:OpenSSHTestInfo.Add("TestAccountPW", $OpenSSHTestAccountsPassword)         # common password for all test accounts
     $Global:OpenSSHTestInfo.Add("DebugMode", $DebugMode.IsPresent)                     # run openssh E2E in debug mode
-
 
     $Script:EnableAppVerifier = -not ($NoAppVerifier.IsPresent)
     if($Script:WindowsInBox = $true)
@@ -100,8 +101,7 @@ WARNING: Following changes will be made to OpenSSH configuration
         return
     }
 
-    Install-OpenSSHTestDependencies    
-
+    Install-OpenSSHTestDependencies
 
     ##### START: install sshd test service
     #delete service if exists
@@ -164,15 +164,13 @@ WARNING: Following changes will be made to OpenSSH configuration
     }
     Start-Service ssh-agent
 
-
-  
     #Prepare user config - known_hosts and ssh_config
     $dotSshDirectoryPath = Join-Path $home .ssh
     if(-not (Test-Path $dotSshDirectoryPath -PathType Container))
     {
         New-Item -ItemType Directory -Path $dotSshDirectoryPath -Force -ErrorAction SilentlyContinue | out-null
     }
-    
+
     $knowHostsFilePath = Join-Path $dotSshDirectoryPath known_hosts
     if (-not (Test-Path $knowHostsFilePath -PathType Leaf)) {
         Copy-Item (Join-Path $Script:E2ETestDataDirectory known_hosts) $knowHostsFilePath -Force
@@ -425,6 +423,25 @@ function Install-OpenSSHTestDependencies
     {
         choco install appverifier -y --force --limitoutput 2>&1 >> $Script:TestSetupLogFile
     }
+
+    # Check for cygwin
+    if (Test-Path $env:SystemDrive\cygwin\bin\sh.exe) {
+        $Script:BashPath="$env:SystemDrive\cygwin\bin\sh.exe"
+    } elseif (Test-Path $env:SystemDrive\cygwin64\bin\sh.exe) {
+        $Script:BashPath="$env:SystemDrive\cygwin64\bin\sh.exe"
+    } elseif (Test-Path $env:SystemDrive\tools\cygwin\bin\sh.exe) {
+        $Script:BashPath="$env:SystemDrive\tools\cygwin\bin\sh.exe"
+    } else {
+        # Install cygwin
+        Write-Host "Installing cygwin using chocolatey to $env:SystemDrive\cygwin folder"
+        choco install cygwin -y --params "/InstallDir:$env:SystemDrive\cygwin\ /NoStartMenu"
+
+        if (Test-Path $env:SystemDrive\cygwin\bin\sh.exe) {
+            $Script:BashPath="$env:SystemDrive\cygwin\bin\sh.exe"
+        } else {
+            Write-Error "Failed to install cygwin to $env:SystemDrive\cygwin folder" -ErrorAction Stop
+        }
+    }
 }
 
 function Install-OpenSSHUtilsModule
@@ -673,6 +690,15 @@ function Invoke-OpenSSHE2ETest
 
 <#
     .Synopsis
+    Run UNIX bash tests using CYGWIN.
+#>
+function Invoke-OpenSSHBashTests
+{
+    &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $Script:BashTestDirectory -ShellPath $Script:BashPath -ArtifactsDirectoryPath $Script:BashTestDirectory
+}
+
+<#
+    .Synopsis
     Run openssh unit tests.
 #>
 function Invoke-OpenSSHUnitTest
@@ -759,4 +785,4 @@ function Write-Log
     }  
 }
 
-Export-ModuleMember -Function Set-BasicTestInfo, Set-OpenSSHTestEnvironment, Clear-OpenSSHTestEnvironment, Invoke-OpenSSHSetupTest, Invoke-OpenSSHUnitTest, Invoke-OpenSSHE2ETest, Invoke-OpenSSHUninstallTest
+Export-ModuleMember -Function Set-BasicTestInfo, Set-OpenSSHTestEnvironment, Clear-OpenSSHTestEnvironment, Invoke-OpenSSHSetupTest, Invoke-OpenSSHUnitTest, Invoke-OpenSSHE2ETest, Invoke-OpenSSHUninstallTest, Invoke-OpenSSHBashTests

@@ -442,6 +442,9 @@ function Install-OpenSSHTestDependencies
             Write-Error "Failed to install cygwin to $env:SystemDrive\cygwin folder" -ErrorAction Stop
         }
     }
+
+    Write-Host "BashPath:$Script:BashPath"
+    $Global:OpenSSHTestInfo.Add("BashPath", $Script:BashPath)
 }
 
 function Install-OpenSSHUtilsModule
@@ -694,6 +697,10 @@ function Invoke-OpenSSHE2ETest
 #>
 function Invoke-OpenSSHBashTests
 {
+    Write-Host "Inside  Invoke-opensshbashtests. ShellPath:$Script:BashPath"
+    Write-Host "opensshbinpath:$Script:OpenSSHBinPath"
+    Write-Host "bashtestdirectory:$Script:BashTestDirectory"
+
     &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $Script:BashTestDirectory -ShellPath $Script:BashPath -ArtifactsDirectoryPath $Script:BashTestDirectory
 }
 

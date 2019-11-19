@@ -351,7 +351,6 @@ function Invoke-OpenSSHTests
 
     # Run UNIX bash tests.
     Invoke-OpenSSHBashTests
-    Write-BuildMessage -Message "Bashtest:$OpenSSHTestInfo["BashPath"]" -Category Error
     if (-not $Global:bash_tests_summary)
     {
         $errorMessage = "Failed to start OpenSSH bash tests"

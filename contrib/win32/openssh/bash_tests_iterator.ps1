@@ -12,6 +12,8 @@ param (
 	[switch] $SkipInstallSSHD
 )
 
+$ErrorActionPreference = 'Continue'
+
 Write-Host "`nInput params.. OpenSSHBinPath:$OpenSSHBinPath"
 Write-Host "bashtestspath:$BashTestsPath"
 Write-Host "ShellPath:$ShellPath"

@@ -24,7 +24,6 @@ $Script:E2ETestResultsFile = Join-Path $TestDataPath $E2ETestResultsFileName
 $Script:UnitTestResultsFile = Join-Path $TestDataPath $UnitTestResultsFileName
 $Script:TestSetupLogFile = Join-Path $TestDataPath $TestSetupLogFileName
 $Script:E2ETestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress\pesterTests"
-$Script:BashTestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress"
 $Script:E2ETestDataDirectory = Join-Path $Script:E2ETestDirectory data
 $Script:WindowsInBox = $false
 $Script:NoLibreSSL = $false
@@ -695,11 +694,13 @@ function Invoke-OpenSSHBashTests
         }
     }
 
+    $bashTestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress"
+
     Write-Host "Inside  Invoke-opensshbashtests. ShellPath:$bashPath"
     Write-Host "opensshbinpath:$Script:OpenSSHBinPath"
-    Write-Host "bashtestdirectory:$Script:BashTestDirectory"
+    Write-Host "bashtestdirectory:$bashTestDirectory"
 
-    &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $Script:BashTestDirectory -ShellPath $bashPath -ArtifactsDirectoryPath $Script:BashTestDirectory
+    &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $bashTestDirectory -ShellPath $bashPath -ArtifactsDirectoryPath $bashTestDirectory -TestFilePath "$bashTestDirectory\scp.sh", "$bashTestDirectory\sftp-chroot.sh", "$bashTestDirectory\sftp-perm.sh", "$bashTestDirectory\cfgparse.sh", "$bashTestDirectory\keys-command.sh", "$bashTestDirectory\hostkey-agent.sh", "$bashTestDirectory\principals-command.sh", "$bashTestDirectory\connect.sh"
 }
 
 <#

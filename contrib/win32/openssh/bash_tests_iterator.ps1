@@ -214,7 +214,7 @@ try
 		{
 			$msg="Executing $test_case_name [$($all_tests.IndexOf($test_case) + 1) of $($all_tests.count)] " + [System.DateTime]::Now
 			Write-Output $msg
-			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST"
+			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST 2>/dev/null"
 			if($?)
 			{
 				$msg="$test_case_name PASSED " +[System.DateTime]::Now

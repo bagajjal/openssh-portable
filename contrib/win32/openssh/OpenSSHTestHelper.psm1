@@ -696,11 +696,7 @@ function Invoke-OpenSSHBashTests
 
     $bashTestDirectory = Join-Path $repositoryRoot.FullName -ChildPath "regress"
 
-    Write-Host "Inside  Invoke-opensshbashtests. ShellPath:$bashPath"
-    Write-Host "opensshbinpath:$Script:OpenSSHBinPath"
-    Write-Host "bashtestdirectory:$bashTestDirectory"
-
-    &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $bashTestDirectory -ShellPath $bashPath -ArtifactsDirectoryPath $bashTestDirectory -TestFilePath "$bashTestDirectory\sftp-chroot.sh", "$bashTestDirectory\connect.sh"
+    &"$PSScriptRoot\bash_tests_iterator.ps1" -OpenSSHBinPath $Script:OpenSSHBinPath -BashTestsPath $bashTestDirectory -ShellPath $bashPath -ArtifactsDirectoryPath $bashTestDirectory
 }
 
 <#

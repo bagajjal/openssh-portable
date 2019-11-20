@@ -14,11 +14,6 @@ param (
 
 $ErrorActionPreference = 'Continue'
 
-Write-Host "`nInput params.. `nOpenSSHBinPath:$OpenSSHBinPath"
-Write-Host "bashtestspath:$BashTestsPath"
-Write-Host "ShellPath:$ShellPath"
-Write-Host "ArtifactsDirectoryPath:$ArtifactsDirectoryPath`n"
-
 # Resolve the relative paths
 $OpenSSHBinPath = Resolve-Path $OpenSSHBinPath -ErrorAction Stop | select -ExpandProperty Path
 $BashTestsPath = Resolve-Path $BashTestsPath -ErrorAction Stop | select -ExpandProperty Path
@@ -43,8 +38,7 @@ if(Test-Path "$BashTestsPath\config.h" -PathType Leaf) {
 	exit
 }
 
-# store user directory
-$user_pwd=pwd | select -ExpandProperty Path
+$user_pwd = pwd | select -ExpandProperty Path
 
 # If we are using a SKU with desired OpenSSH binaries then we can skip these steps.
 if(!$SkipInstallSSHD) {
@@ -100,11 +94,11 @@ try
 	}
 
 	# Prepend shell path to PATH. This is required to make the shell commands (like sleep, cat, etc) work properly.
-	$env:TEST_SHELL_PATH=$ShellPath -replace "\\","/"
+	$env:TEST_SHELL_PATH = $ShellPath -replace "\\","/"
 	$TEST_SHELL_DIR = split-path $ShellPath
 	if(!$env:path.StartsWith($TEST_SHELL_DIR, "CurrentCultureIgnoreCase"))
 	{
-		$env:path=$TEST_SHELL_DIR+";"+$env:path
+		$env:path = $TEST_SHELL_DIR + ";" + $env:path
 	}
 
 	$BashTestsPath = $BashTestsPath -replace "\\","/"
@@ -155,7 +149,6 @@ try
 		$env:TEST_SSH_USER_DOMAIN = Split-Path $user
 	}
 
-	# output to terminal
 	Write-Output "USER: $env:TEST_SSH_USER"
 	Write-Output "DOMAIN: $env:TEST_SSH_USER_DOMAIN"
 	Write-Output "OpenSSHBinPath: $OpenSSHBinPath_shell_fmt"
@@ -163,7 +156,7 @@ try
 	Write-Output "BashTestsPath: $BashTestsPath"
 
 	# remove, create the temp test directory
-	$temp_test_path="temp_test"
+	$temp_test_path = "temp_test"
 	$null = Remove-Item -Recurse -Force $temp_test_path -ErrorAction SilentlyContinue
 	$null = New-Item -ItemType directory -Path $temp_test_path -Force -ErrorAction Stop
 

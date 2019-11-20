@@ -9,4 +9,3 @@ ${SSH} -F $OBJ/ssh_config somehost true
 if [ $? -ne 0 ]; then
 	fail "ssh connect with failed"
 fi
-

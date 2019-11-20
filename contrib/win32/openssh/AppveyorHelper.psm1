@@ -319,41 +319,41 @@ function Invoke-OpenSSHTests
     }
 
     Write-Host "Start running unit tests"
-    # $unitTestFailed = Invoke-OpenSSHUnitTest
+    $unitTestFailed = Invoke-OpenSSHUnitTest
 
-    # if($unitTestFailed)
-    # {
-    #     Write-Host "At least one of the unit tests failed!" -ForegroundColor Yellow
-    #     Write-BuildMessage "At least one of the unit tests failed!" -Category Error
-    #     Set-BuildVariable TestPassed False
-    # }
-    # else
-    # {
-    #     Write-Host "All Unit tests passed!"
-    #     Write-BuildMessage -Message "All Unit tests passed!" -Category Information    
-    # }
+    if($unitTestFailed)
+    {
+        Write-Host "At least one of the unit tests failed!" -ForegroundColor Yellow
+        Write-BuildMessage "At least one of the unit tests failed!" -Category Error
+        Set-BuildVariable TestPassed False
+    }
+    else
+    {
+        Write-Host "All Unit tests passed!"
+        Write-BuildMessage -Message "All Unit tests passed!" -Category Information
+    }
 
-    # # Run all E2E tests.
-    # Set-OpenSSHTestEnvironment -Confirm:$false
-    # Invoke-OpenSSHE2ETest
-    # if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
-    # {
-    #     Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
-    #     Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
-    #     Set-BuildVariable TestPassed False
-    #     Write-Warning "Stop running further tests!"
-    #     return
-    # }
-    # $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
-    # if ([int]$xml.'test-results'.failures -gt 0) 
-    # {
-    #     $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
-    #     Write-Warning $errorMessage
-    #     Write-BuildMessage -Message $errorMessage -Category Error
-    #     Set-BuildVariable TestPassed False
-    #     Write-Warning "Stop running further tests!"
-    #     return
-    # }
+    # Run all E2E tests.
+    Set-OpenSSHTestEnvironment -Confirm:$false
+    Invoke-OpenSSHE2ETest
+    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
+    {
+        Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
+        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
+        Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
+    }
+    $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
+    if ([int]$xml.'test-results'.failures -gt 0)
+    {
+        $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
+        Write-Warning $errorMessage
+        Write-BuildMessage -Message $errorMessage -Category Error
+        Set-BuildVariable TestPassed False
+        Write-Warning "Stop running further tests!"
+        return
+    }
 
     # Run UNIX bash tests.
     Invoke-OpenSSHBashTests

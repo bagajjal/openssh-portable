@@ -327,27 +327,27 @@ function Invoke-OpenSSHTests
         Write-BuildMessage -Message "All Unit tests passed!" -Category Information    
     }
 
-    # Run all E2E tests.
-    Set-OpenSSHTestEnvironment -Confirm:$false
-    Invoke-OpenSSHE2ETest
-    if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
-    {
-        Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
-        Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }
-    $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
-    if ([int]$xml.'test-results'.failures -gt 0) 
-    {
-        $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
-        Write-Warning $errorMessage
-        Write-BuildMessage -Message $errorMessage -Category Error
-        Set-BuildVariable TestPassed False
-        Write-Warning "Stop running further tests!"
-        return
-    }
+    # # Run all E2E tests.
+    # Set-OpenSSHTestEnvironment -Confirm:$false
+    # Invoke-OpenSSHE2ETest
+    # if (($OpenSSHTestInfo -eq $null) -or (-not (Test-Path $OpenSSHTestInfo["E2ETestResultsFile"])))
+    # {
+    #     Write-Warning "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests."
+    #     Write-BuildMessage -Message "Test result file $OpenSSHTestInfo["E2ETestResultsFile"] not found after tests." -Category Error
+    #     Set-BuildVariable TestPassed False
+    #     Write-Warning "Stop running further tests!"
+    #     return
+    # }
+    # $xml = [xml](Get-Content $OpenSSHTestInfo["E2ETestResultsFile"] | out-string)
+    # if ([int]$xml.'test-results'.failures -gt 0) 
+    # {
+    #     $errorMessage = "$($xml.'test-results'.failures) tests in regress\pesterTests failed. Detail test log is at $($OpenSSHTestInfo["E2ETestResultsFile"])."
+    #     Write-Warning $errorMessage
+    #     Write-BuildMessage -Message $errorMessage -Category Error
+    #     Set-BuildVariable TestPassed False
+    #     Write-Warning "Stop running further tests!"
+    #     return
+    # }
 
     # Run UNIX bash tests.
     Invoke-OpenSSHBashTests
@@ -427,7 +427,14 @@ function Publish-OpenSSHTestResults
              Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
         }
 
+        if (-not $Global:bash_tests_summary)
+        {
+            Write-BuildMessage "bashtestssummary doesn't exists"
+        }
+
+        Write-BuildMessage "bashtestsummaryfile_1:$Global:bash_tests_summary["BashTestSummaryFile"]"
         $bashTestSummaryFile = Resolve-Path $Global:bash_tests_summary["BashTestSummaryFile"] -ErrorAction Ignore
+        Write-BuildMessage "bashtestsummaryfile_2: $bashTestSummaryFile"
         if( (Test-Path $Global:OpenSSHTestInfo["BashTestSummaryFile"]) -and $bashTestSummaryFile)
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $bashTestSummaryFile)

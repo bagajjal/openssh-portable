@@ -427,24 +427,12 @@ function Publish-OpenSSHTestResults
              Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
         }
 
-        Write-BuildMessage "publishing bash tests summary"
-        Write-Host "publishing bash tests summary"
-        if (-not $Global:bash_tests_summary)
+        if ($Global:bash_tests_summary)
         {
-            Write-Host "bashtestssummary doesn't exists"
-        }
-
-        $Global:bash_tests_summary | ConvertTo-Json
-
-        $bashTestSummaryFile = $Global:bash_tests_summary["BashTestSummaryFile"]
-        Write-Host "bashtestsummaryfile_1:$bashTestSummaryFile"
-        $bashTestSummaryFile = Resolve-Path $Global:bash_tests_summary["BashTestSummaryFile"] -ErrorAction Ignore
-        Get-Content -Raw $bashTestSummaryFile
-        Write-Host "bashtestsummaryfile_2: $bashTestSummaryFile"
-        if( (Test-Path $Global:OpenSSHTestInfo["BashTestSummaryFile"]) -and $bashTestSummaryFile)
-        {
+            $bashTestSummaryFile = $Global:bash_tests_summary["BashTestSummaryFile"]
+            Write-Host "balu.. bashtestsummaryfile:$bashTestSummaryFile"
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $bashTestSummaryFile)
-             Write-Host -Message "Bash test results uploaded!" -Category Information
+            Write-Host -Message "Bash test results uploaded!" -Category Information
         }
     }
 

@@ -277,9 +277,11 @@ function Publish-Artifact
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["UninstallTestResultsFile"]
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:OpenSSHTestInfo["TestSetupLogFile"]
     }
+
     if ($Global:bash_tests_summary)
     {
         Add-Artifact -artifacts $artifacts -FileToAdd $Global:bash_tests_summary["BashTestSummaryFile"]
+        Add-Artifact -artifacts $artifacts -FileToAdd $Global:bash_tests_summary["BashTestLogFile"]
     }
     
     foreach ($artifact in $artifacts)
@@ -429,15 +431,6 @@ function Publish-OpenSSHTestResults
         {
             (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $uninstallResultFile)
              Write-BuildMessage -Message "Uninstall test results uploaded!" -Category Information
-        }
-
-        if ($Global:bash_tests_summary)
-        {
-            $bashTestSummaryFile = $Global:bash_tests_summary["BashTestSummaryFile"]
-            Write-Host "balu.. bashtestsummaryfile:$bashTestSummaryFile"
-            Get-Content -Raw $bashTestSummaryFile
-            (New-Object 'System.Net.WebClient').UploadFile("https://ci.appveyor.com/api/testresults/nunit/$($env:APPVEYOR_JOB_ID)", $bashTestSummaryFile)
-            Write-Host -Message "Bash test results uploaded!" -Category Information
         }
     }
 

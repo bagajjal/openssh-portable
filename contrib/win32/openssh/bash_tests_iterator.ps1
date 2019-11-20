@@ -5,7 +5,7 @@ param (
 	[Parameter(Mandatory=$true)] [string] $BashTestsPath,
 	# Path to CYGWIN / WSL.
 	[Parameter(Mandatory=$true)] [string] $ShellPath,
-	# Individual bash test file (Ex - connect.sh)
+	# Individual bash test file (Ex - connect.sh, scp.sh)
 	[Parameter(Mandatory=$false)] [string[]] $TestFilePath,
 	[Parameter(Mandatory=$false)] [string] $ArtifactsDirectoryPath=".",
 	[switch] $SkipCleanup,
@@ -14,30 +14,30 @@ param (
 
 $ErrorActionPreference = 'Continue'
 
-Write-Host "`nInput params.. OpenSSHBinPath:$OpenSSHBinPath"
+Write-Host "`nInput params.. `nOpenSSHBinPath:$OpenSSHBinPath"
 Write-Host "bashtestspath:$BashTestsPath"
 Write-Host "ShellPath:$ShellPath"
 Write-Host "ArtifactsDirectoryPath:$ArtifactsDirectoryPath`n"
 
 # Resolve the relative paths
-$OpenSSHBinPath=resolve-path $OpenSSHBinPath -ErrorAction Stop | select -ExpandProperty Path
-$BashTestsPath=resolve-path $BashTestsPath -ErrorAction Stop | select -ExpandProperty Path
-$ShellPath=resolve-path $ShellPath -ErrorAction Stop | select -ExpandProperty Path
-$ArtifactsDirectoryPath=resolve-path $ArtifactsDirectoryPath -ErrorAction Stop | select -ExpandProperty Path
+$OpenSSHBinPath = Resolve-Path $OpenSSHBinPath -ErrorAction Stop | select -ExpandProperty Path
+$BashTestsPath = Resolve-Path $BashTestsPath -ErrorAction Stop | select -ExpandProperty Path
+$ShellPath = Resolve-Path $ShellPath -ErrorAction Stop | select -ExpandProperty Path
+$ArtifactsDirectoryPath = Resolve-Path $ArtifactsDirectoryPath -ErrorAction Stop | select -ExpandProperty Path
 if ($TestFilePath) {
-	$TestFilePath=resolve-path $TestFilePath -ErrorAction Stop | select -ExpandProperty Path
+	$TestFilePath = Resolve-Path $TestFilePath -ErrorAction Stop | select -ExpandProperty Path
 	# convert to bash format
-	$TestFilePath=$TestFilePath -replace "\\","/"
+	$TestFilePath = $TestFilePath -replace "\\","/"
 }
 
-# Make sure config.h exists. It is used by bashstests (Ex - sftp-glob.sh, cfgparse.sh)
+# Make sure config.h exists. It is used in some bashstests (Ex - sftp-glob.sh, cfgparse.sh)
 # first check in $BashTestsPath folder. If not then it's parent folder. If not then in the $OpenSSHBinPath
 if(Test-Path "$BashTestsPath\config.h" -PathType Leaf) {
-	$configPath="$BashTestsPath\config.h"
+	$configPath = "$BashTestsPath\config.h"
 } elseif(Test-Path "$BashTestsPath\..\config.h" -PathType Leaf) {
-	$configPath=resolve-path "$BashTestsPath\..\config.h" -ErrorAction Stop | select -ExpandProperty Path
+	$configPath = Resolve-Path "$BashTestsPath\..\config.h" -ErrorAction Stop | select -ExpandProperty Path
 } elseif(Test-Path "$OpenSSHBinPath\config.h" -PathType Leaf) {
-	$configPath="$OpenSSHBinPath\config.h"
+	$configPath = "$OpenSSHBinPath\config.h"
 } else {
 	Write-Error "Couldn't find config.h"
 	exit
@@ -49,6 +49,7 @@ $user_pwd=pwd | select -ExpandProperty Path
 # If we are using a SKU with desired OpenSSH binaries then we can skip these steps.
 if(!$SkipInstallSSHD) {
 	# Make sure install-sshd.ps1 exists.
+	# This is required only for ssh-agent related bash tests.
 	if(!(Test-Path "$PSScriptRoot\install-sshd.ps1" -PathType Leaf)) {
 		Write-Error "$PSScriptRoot\install-sshd.ps1 doesn't exists"
 		exit
@@ -74,13 +75,13 @@ try
 	$registryPath = "HKLM:\Software\OpenSSH"
 	$dfltShell = "DefaultShell"
 	# Fetch the user configured default shell.
-	$out=(Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
-	if($out) {
+	$out = (Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
+	if ($out) {
 		$user_default_shell = $out.$dfltShell
 		Write-Output "User configured default shell: $user_default_shell"
 	}
 
-	if($user_default_shell -ne $ShellPath)
+	if ($user_default_shell -ne $ShellPath)
 	{
 		if (!(Test-Path $registryPath)) {
 			# start and stop the sshd so that "HKLM:\Software\OpenSSH" registry path is created.
@@ -89,8 +90,8 @@ try
 		}
 
 		Set-ItemProperty -Path $registryPath -Name $dfltShell -Value $ShellPath -Force
-		$out=(Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
-		if($out.$dfltShell -ne $ShellPath) {
+		$out = (Get-ItemProperty -Path $registryPath -Name $dfltShell -ErrorAction SilentlyContinue)
+		if ($out.$dfltShell -ne $ShellPath) {
 			Write-Output "Failed to set HKLM:\Software\OpenSSH\DefaultShell to $ShellPath"
 			exit
 		}
@@ -100,53 +101,53 @@ try
 
 	# Prepend shell path to PATH. This is required to make the shell commands (like sleep, cat, etc) work properly.
 	$env:TEST_SHELL_PATH=$ShellPath -replace "\\","/"
-	$TEST_SHELL_DIR=split-path $ShellPath
+	$TEST_SHELL_DIR = split-path $ShellPath
 	if(!$env:path.StartsWith($TEST_SHELL_DIR, "CurrentCultureIgnoreCase"))
 	{
 		$env:path=$TEST_SHELL_DIR+";"+$env:path
 	}
 
-	$BashTestsPath=$BashTestsPath -replace "\\","/"
+	$BashTestsPath = $BashTestsPath -replace "\\","/"
 	Push-location $BashTestsPath
 
 	# BUILDDIR: config.h location. 
 	# BUILDDIR is used by bashstests (Ex - sftp-glob.sh, cfgparse.sh)
-	$BUILDDIR=resolve-path(split-path $configpath) | select -ExpandProperty Path
-	$tmp=&$ShellPath -c pwd
+	$BUILDDIR = Resolve-Path(split-path $configpath) | select -ExpandProperty Path
+	$tmp = &$ShellPath -c pwd
 	if ($tmp.StartsWith("/cygdrive/")) {
-		$shell_drv_fmt="/cygdrive/" # "/cygdrive/" - cygwin
-		$BUILDDIR=&$ShellPath -c "cygpath -u '$BUILDDIR'"
+		$shell_drv_fmt = "/cygdrive/" # cygwin
+		$BUILDDIR = &$ShellPath -c "cygpath -u '$BUILDDIR'"
 		$OpenSSHBinPath_shell_fmt=&$ShellPath -c "cygpath -u '$OpenSSHBinPath'"
-		$BashTestsPath=&$ShellPath -c "cygpath -u '$BashTestsPath'"
+		$BashTestsPath = &$ShellPath -c "cygpath -u '$BashTestsPath'"
 	} elseif ($tmp.StartsWith("/mnt/")) {
-		$shell_drv_fmt="/mnt/" # "/mnt/" - WSL bash
-		$BUILDDIR=&$ShellPath -c "wslpath -u '$BUILDDIR'"
+		$shell_drv_fmt = "/mnt/" # WSL bash
+		$BUILDDIR = &$ShellPath -c "wslpath -u '$BUILDDIR'"
 		$OpenSSHBinPath_shell_fmt=&$ShellPath -c "wslpath -u '$OpenSSHBinPath'"
-		$BashTestsPath=&$ShellPath -c "wslpath -u '$BashTestsPath'"
+		$BashTestsPath = &$ShellPath -c "wslpath -u '$BashTestsPath'"
 	}
 
 	#set the environment variables.
-	$env:ShellPath=$ShellPath
-	$env:SSH_TEST_ENVIRONMENT=1
-	$env:TEST_SSH_TRACE="yes"
-	$env:TEST_SHELL="/bin/sh"
-	$env:TEST_SSH_PORT=22
-	$env:TEST_SSH_SSH=$OpenSSHBinPath_shell_fmt+"/ssh.exe"
-	$env:TEST_SSH_SSHD=$OpenSSHBinPath_shell_fmt+"/sshd.exe"
-	$env:TEST_SSH_SSHAGENT=$OpenSSHBinPath_shell_fmt+"/ssh-agent.exe"
-	$env:TEST_SSH_SSHADD=$OpenSSHBinPath_shell_fmt+"/ssh-add.exe"
-	$env:TEST_SSH_SSHKEYGEN=$OpenSSHBinPath_shell_fmt+"/ssh-keygen.exe"
-	$env:TEST_SSH_SSHKEYSCAN=$OpenSSHBinPath_shell_fmt+"/ssh-keyscan.exe"
-	$env:TEST_SSH_SFTP=$OpenSSHBinPath_shell_fmt+"/sftp.exe"
-	$env:TEST_SSH_SFTPSERVER=$OpenSSHBinPath_shell_fmt+"/sftp-server.exe"
-	$env:TEST_SSH_SCP=$OpenSSHBinPath_shell_fmt+"/scp.exe"
-	$env:BUILDDIR=$BUILDDIR
-	$env:TEST_WINDOWS_SSH=1
+	$env:ShellPath = $ShellPath
+	$env:SSH_TEST_ENVIRONMENT = 1
+	$env:TEST_SSH_TRACE = "yes"
+	$env:TEST_SHELL = "/bin/sh"
+	$env:TEST_SSH_PORT = 22
+	$env:TEST_SSH_SSH = $OpenSSHBinPath_shell_fmt+"/ssh.exe"
+	$env:TEST_SSH_SSHD = $OpenSSHBinPath_shell_fmt+"/sshd.exe"
+	$env:TEST_SSH_SSHAGENT = $OpenSSHBinPath_shell_fmt+"/ssh-agent.exe"
+	$env:TEST_SSH_SSHADD = $OpenSSHBinPath_shell_fmt+"/ssh-add.exe"
+	$env:TEST_SSH_SSHKEYGEN = $OpenSSHBinPath_shell_fmt+"/ssh-keygen.exe"
+	$env:TEST_SSH_SSHKEYSCAN = $OpenSSHBinPath_shell_fmt+"/ssh-keyscan.exe"
+	$env:TEST_SSH_SFTP = $OpenSSHBinPath_shell_fmt+"/sftp.exe"
+	$env:TEST_SSH_SFTPSERVER = $OpenSSHBinPath_shell_fmt+"/sftp-server.exe"
+	$env:TEST_SSH_SCP = $OpenSSHBinPath_shell_fmt+"/scp.exe"
+	$env:BUILDDIR = $BUILDDIR
+	$env:TEST_WINDOWS_SSH = 1
 	$user = &"$env:windir\system32\whoami.exe"
 	if($user.Contains($env:COMPUTERNAME.ToLower())) {
 		# for local accounts, skip COMPUTERNAME
 		$user = Split-Path $user -leaf
-		$env:TEST_SSH_USER=$user
+		$env:TEST_SSH_USER = $user
 	} else {
 		# for domain user convert "domain\user" to "domain/user".
 		$user = $user -replace "\\","/"
@@ -167,10 +168,10 @@ try
 	$null = New-Item -ItemType directory -Path $temp_test_path -Force -ErrorAction Stop
 
 	# remove the summary, output files.
-	$test_summary="$ArtifactsDirectoryPath\bashtest_summary.txt"
-	$test_output="$ArtifactsDirectoryPath\bashtest_output.txt"
-	$null = Remove-Item -Force $test_summary -ErrorAction SilentlyContinue
-	$null = Remove-Item -Force $test_output -ErrorAction SilentlyContinue
+	$bash_test_summary = "$ArtifactsDirectoryPath\bash_tests_summary.txt"
+	$bash_test_log_file = "$ArtifactsDirectoryPath\bash_tests_output.log"
+	$null = Remove-Item -Force $bash_test_summary -ErrorAction SilentlyContinue
+	$null = Remove-Item -Force $bash_test_log_file -ErrorAction SilentlyContinue
 	[int]$total_tests = 0
 	[int]$total_tests_passed = 0
 	[int]$total_tests_failed = 0
@@ -184,51 +185,53 @@ try
 
 	if($TestFilePath) {
 		# User can specify individual test file path.
-		$all_tests=$TestFilePath
+		$all_tests = $TestFilePath
 	} else {
 		# picking the gawk.exe from bash folder.
 		# TODO - check if gawk.exe is present in WSL.
-		$all_tests=gawk.exe 'sub(/.*LTESTS=/,""""){f=1} f{print $1; if (!/\\\\/) exit}' Makefile 
+		$all_tests = gawk.exe 'sub(/.*LTESTS=/,""""){f=1} f{print $1; if (!/\\\\/) exit}' Makefile
 	}
 
 	Write-Output ""
 
-	foreach($test_case in $all_tests) {
-		if($TestFilePath) {
-			$TEST=$test_case
+	foreach ($test_file in $all_tests) {
+		if ($TestFilePath) {
+			$TEST = $test_file
 		} else {
-			if(!$test_case.Contains(".sh")) {
-				$TEST=$BashTestsPath+"/"+$test_case+".sh"
+			if (!$test_file.Contains(".sh")) {
+				$TEST = $BashTestsPath + "/" + $test_file + ".sh"
 			} else {
-				$TEST=$BashTestsPath+"/"+$test_case
+				$TEST = $BashTestsPath + "/" + $test_file
 			}
 		}
 
-		$test_case_name = [System.IO.Path]::GetFileName($TEST)
-		if($known_failed_testcases.Contains($test_case_name))
+		$test_file_name = [System.IO.Path]::GetFileName($TEST)
+		if ($known_failed_testcases.Contains($test_file_name))
 		{
-			Write-Output "Skip the known failed test:$test_case_name [$($all_tests.IndexOf($test_case) + 1) of $($all_tests.count)]"
-			$known_failed_testcases_skipped +=  "$test_case_name"
+			Write-Output "Skip the known failed test:$test_file_name [$($all_tests.IndexOf($test_file) + 1) of $($all_tests.count)]"
+			$known_failed_testcases_skipped +=  "$test_file_name"
 		}
 		else
 		{
-			$msg="Executing $test_case_name [$($all_tests.IndexOf($test_case) + 1) of $($all_tests.count)] " + [System.DateTime]::Now
-			Write-Output $msg
-			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST 2>/dev/null"
-			if($?)
+			$msg = "Run $test_file_name [$($all_tests.IndexOf($test_file) + 1) of $($all_tests.count)] " + [System.DateTime]::Now
+			Write-Output $msg | Tee-Object -FilePath $bash_test_log_file -Append -ErrorAction Stop
+
+			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST" | Out-File -FilePath $bash_test_log_file -Append -ErrorAction Stop
+			if ($?)
 			{
-				$msg="$test_case_name PASSED " +[System.DateTime]::Now
-				Write-Output $msg
+				$msg = "$test_file_name PASSED " + [System.DateTime]::Now
+				Write-Output $msg | Tee-Object -FilePath $bash_test_log_file -Append -ErrorAction Stop
 				$total_tests_passed++
 			}
 			else
 			{
-				$msg="$test_case_name FAILED " +[System.DateTime]::Now
-				Write-Output $msg
+				$msg = "$test_file_name FAILED " + [System.DateTime]::Now
+				Write-Output $msg | Tee-Object -FilePath $bash_test_log_file -Append -ErrorAction Stop
 				$total_tests_failed++
-				$failed_testcases=$failed_testcases + "$test_case_name "
+				$failed_testcases = $failed_testcases + "$test_file_name "
 			}
 		}
+
 		$total_tests++
 	}
 
@@ -245,15 +248,16 @@ try
 		"TotalBashTestsSkipped" = $known_failed_testcases_skipped.Count;
 		"FailedBashTests" = $failed_testcases;
 		"SkippedBashTests" = $known_failed_testcases_skipped -join ', ';
-		"BashTestSummaryFile" = $test_summary
+		"BashTestSummaryFile" = $bash_test_summary
+		"BashTestLogFile"  = $bash_test_log_file
 	}
 
-	$Global:bash_tests_summary | ConvertTo-Json | Out-File -FilePath $test_summary
+	$Global:bash_tests_summary | ConvertTo-Json | Out-File -FilePath $bash_test_summary
 
 	#output the summary
-	Write-Output "`nArtifacts are saved to $test_summary"
+	Write-Output "`nArtifacts are saved to $bash_test_summary"
 	Write-Output "============================================"
-	cat $test_summary
+	Get-Content -Raw $bash_test_summary
 	Write-Output "============================================`n"
 }
 finally

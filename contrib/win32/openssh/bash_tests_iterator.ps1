@@ -248,8 +248,7 @@ try
 	$Global:bash_tests_summary | ConvertTo-Json | Out-File -FilePath $bash_test_summary
 
 	#output the summary
-	Write-Output "`nArtifacts are saved to $bash_test_summary"
-	Write-Output "============================================"
+	Write-Output "`n============================================"
 	Get-Content -Raw $bash_test_summary
 	Write-Output "============================================`n"
 }

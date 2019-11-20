@@ -216,7 +216,7 @@ try
 			$msg = "Run $test_file_name [$($all_tests.IndexOf($test_file) + 1) of $($all_tests.count)] " + [System.DateTime]::Now
 			Write-Output $msg | Tee-Object -FilePath $bash_test_log_file -Append -ErrorAction Stop
 
-			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST" | Out-File -FilePath $bash_test_log_file -Append -ErrorAction Stop
+			&$env:ShellPath -c "/usr/bin/sh $BashTestsPath/test-exec.sh $BashTestsPath/$temp_test_path $TEST 2>/dev/null" | Out-File -FilePath $bash_test_log_file -Append -ErrorAction Stop
 			if ($?)
 			{
 				$msg = "$test_file_name PASSED " + [System.DateTime]::Now

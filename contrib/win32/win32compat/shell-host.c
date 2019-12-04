@@ -1418,7 +1418,7 @@ int start_as_shell(wchar_t* cmd)
 	memset(&pi, 0, sizeof(PROCESS_INFORMATION));
 	si.cb = sizeof(STARTUPINFOW);
 
-	if (CreateProcessW(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi) == FALSE) {
+	if (CreateProcessW(NULL, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi) == FALSE) {
 		printf("ssh-shellhost cannot run '%ls', error: %d", cmd, GetLastError());
 		exit(255);
 	}

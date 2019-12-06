@@ -1068,6 +1068,10 @@ spawn_child_internal(char* cmd, char *const argv[], HANDLE in, HANDLE out, HANDL
 	si.hStdError = err;
 	si.dwFlags = STARTF_USESTDHANDLES;
 	flags |= CREATE_NO_WINDOW;
+
+	if (strstr(cmd, "sshd.exe")) {
+		flags |= DETACHED_PROCESS;
+	}
 	
 	wchar_t * t = cmdline_utf16;
 	do {

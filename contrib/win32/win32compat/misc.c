@@ -1391,7 +1391,7 @@ is_absolute_path(const char *path)
 	if(*path == '\"' || *path == '\'') /* skip double quote if path is "c:\abc" */
 		path++;
 
-	if (*path == '/' || *path == '\\' || (*path != '\0' && isalpha(*path) && path[1] == ':') ||
+	if (*path == '/' || *path == '\\' || (*path != '\0' && __isascii(*path) && isalpha(*path) && path[1] == ':') ||
 	    ((strlen(path) >= strlen(PROGRAM_DATA)) && (memcmp(path, PROGRAM_DATA, strlen(PROGRAM_DATA)) == 0)))
 		retVal = 1;
 
@@ -2014,4 +2014,15 @@ cleanup:
 		free(command_w);
 
 	return ret;
+}
+
+char *
+strrstr(const char *inStr, const char *pattern)
+{
+	char *tmp = NULL, *last = NULL;
+	tmp = (char *) inStr;
+	while(tmp = strstr(tmp, pattern))
+		last = tmp++;
+
+	return last;
 }

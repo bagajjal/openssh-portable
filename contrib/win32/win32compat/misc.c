@@ -1411,7 +1411,7 @@ is_absolute_path(const char *path)
 
 	if (*path == '/' || *path == '\\' || (*path != '\0' && __isascii(*path) && isalpha(*path) && path[1] == ':') ||
 	    ((strlen(path) >= strlen(PROGRAM_DATA)) && (memcmp(path, PROGRAM_DATA, strlen(PROGRAM_DATA)) == 0)))
-		retVal = 1;
+		retVal = 1; 
 
 	return retVal;
 }

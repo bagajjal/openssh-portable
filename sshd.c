@@ -654,10 +654,17 @@ send_autxctx_state(Authctxt *auth, int fd)
 {
 	struct sshbuf *m;
 	int r;
+	struct passwd *pw = auth->pw;
 
 	if ((m = sshbuf_new()) == NULL)
 		fatal("%s: sshbuf_new failed", __func__);
-	if ((r = sshbuf_put_cstring(m, auth->pw->pw_name)) != 0)
+	if ((r = sshbuf_put_string(m, pw, sizeof(*pw))) != 0 ||
+	    (r = sshbuf_put_cstring(m, pw->pw_name)) != 0 ||
+	    (r = sshbuf_put_cstring(m, "*")) != 0 ||
+	    (r = sshbuf_put_cstring(m, pw->pw_gecos)) != 0 ||
+	    (r = sshbuf_put_cstring(m, pw->pw_dir)) != 0 ||
+	    (r = sshbuf_put_cstring(m, pw->pw_shell)) != 0 ||
+	    (r = sshbuf_put_cstring(m, auth->user)) != 0)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 
 	if (ssh_msg_send(fd, 0, m) == -1)
@@ -666,13 +673,15 @@ send_autxctx_state(Authctxt *auth, int fd)
 	sshbuf_free(m);
 }
 
-static void
+static struct passwd *
 recv_autxctx_state(Authctxt *auth, int fd)
 {
 	struct sshbuf *m;
 	u_char *cp, ver, *user;
-	size_t user_len;
+	size_t len;
 	int r;
+	struct passwd *pw;
+	const u_char *p;
 
 	debug3("%s: entering fd = %d", __func__, fd);
 
@@ -684,12 +693,27 @@ recv_autxctx_state(Authctxt *auth, int fd)
 		fatal("%s: buffer error: %s", __func__, ssh_err(r));
 	if (ver != 0)
 		fatal("%s: rexec version mismatch", __func__);
-	if ((r = sshbuf_get_string_direct(m, &user, &user_len)) != 0)
-		fatal("%s: buffer error: %s", __func__, ssh_err(r));
-	auth->user = xstrdup(user);
 
+	pw = xcalloc(sizeof(*pw), 1);
+	if ((r = sshbuf_get_string_direct(m, &p, &len)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+	if (len != sizeof(*pw))
+		fatal("%s: struct passwd size mismatch", __func__);
+	memcpy(pw, p, sizeof(*pw));
+
+	if ((r = sshbuf_get_cstring(m, &pw->pw_name, NULL)) != 0 ||
+	    (r = sshbuf_get_cstring(m, &pw->pw_passwd, NULL)) != 0 ||
+	    (r = sshbuf_get_cstring(m, &pw->pw_gecos, NULL)) != 0 ||
+	    (r = sshbuf_get_cstring(m, &pw->pw_dir, NULL)) != 0 ||
+	    (r = sshbuf_get_cstring(m, &pw->pw_shell, NULL)) != 0 ||
+	    (r = sshbuf_get_cstring(m, &auth->user, NULL)) != 0)
+		fatal("%s: buffer error: %s", __func__, ssh_err(r));
+
+	auth->valid = 1;
 	debug3("%s: done", __func__);
 	sshbuf_free(m);
+
+	return pw;
 }
 
 static char**
@@ -740,9 +764,8 @@ privsep_preauth(struct ssh *ssh)
 #ifdef FORK_NOT_SUPPORTED
 	if (privsep_auth_child) {
 		Authctxt *authctxt = ssh->authctxt;
-		recv_autxctx_state(authctxt, PRIVSEP_MONITOR_FD);
-		authctxt->pw = getpwnamallow(ssh, authctxt->user);
-		authctxt->valid = 1;
+		authctxt->pw = recv_autxctx_state(authctxt, PRIVSEP_MONITOR_FD);
+
 		return 1;
 	}
 	else if (privsep_unauth_child) {

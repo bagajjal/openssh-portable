@@ -172,25 +172,43 @@ get_passwd(const wchar_t * user_utf16, PSID sid)
 	WCHAR domain_name[DNLEN + 1] = L"";
 	DWORD domain_name_size = DNLEN + 1;
 	SID_NAME_USE account_type = 0;
+	wchar_t computer_name[CNLEN + 1] = { 0, };
+	DWORD computer_name_size = ARRAYSIZE(computer_name);
 
 	errno = 0;
 	if (reset_pw() != 0)
 		return NULL;
-	
-	/*
-	 * We support both "domain\user" and "domain/user" formats.
-	 * But win32 APIs only accept domain\user format so convert it.
-	 */
-	if (user_utf16) {
-		user_utf16_modified = _wcsdup(user_utf16);
-		if (!user_utf16_modified) {
-			errno = ENOMEM;
-			error("%s failed to duplicate %s", __func__, user_utf16);
-			goto cleanup;
-		}
 
-		if (tmp = wcsstr(user_utf16_modified, L"/"))
-			*tmp = L'\\';
+	/* fetch the computer name so we can determine if the specified user is local or not */
+	if (GetComputerNameW(computer_name, &computer_name_size) == 0) {
+		goto cleanup;
+	}
+
+	if (user_utf16) {
+		/* Support MSaccount (ex-abc@outlook.com) same as the computer name (ex-abc) */
+		if ((_wcsicmp(computer_name, user_utf16) == 0)) {
+			size_t len = (2 * wcslen(user_utf16)) + 1 + 1;
+			user_utf16_modified = malloc(len);
+			wcscpy_s(user_utf16_modified, len, user_utf16);
+			wcscat_s(user_utf16_modified, len, L"\\");
+			wcscat_s(user_utf16_modified, len, user_utf16);
+
+			debug3("user_utf16:%S user_utf16_modified:%S", user_utf16, user_utf16_modified);
+		} else {
+			user_utf16_modified = _wcsdup(user_utf16);
+			if (!user_utf16_modified) {
+				errno = ENOMEM;
+				error("%s failed to duplicate %s", __func__, user_utf16);
+				goto cleanup;
+			}
+
+			/*
+			* We support both "domain\user" and "domain/user" formats.
+			* But win32 APIs only accept domain\user format so convert it.
+			*/
+			if (tmp = wcsstr(user_utf16_modified, L"/"))
+				*tmp = L'\\';
+		}
 	}
 
 	/* skip forward lookup on name if sid was passed in */
@@ -229,12 +247,7 @@ get_passwd(const wchar_t * user_utf16, PSID sid)
 		goto cleanup;
 	}
 
-	/* fetch the computer name so we can determine if the specified user is local or not */
-	wchar_t computer_name[CNLEN + 1];
-	DWORD computer_name_size = ARRAYSIZE(computer_name);
-	if (GetComputerNameW(computer_name, &computer_name_size) == 0) {
-		goto cleanup;
-	}
+
 
 	/* If standard local user name, just use name without decoration */
 	if ((_wcsicmp(domain_name, computer_name) == 0))
@@ -266,6 +279,7 @@ get_passwd(const wchar_t * user_utf16, PSID sid)
 	}
 
 	ret = &pw;
+	debug("user:%S is resolved to:%s", user_utf16, pw.pw_name);
 
 cleanup:
 

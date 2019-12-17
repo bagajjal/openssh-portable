@@ -353,5 +353,19 @@ Match User matchuser
             Stop-SSHDTestDaemon   -Port $port
             Remove-UserFromLocalGroup -UserName $matchuser -GroupName $allowGroup1
         }
+
+		It "$tC.$tI - Match User block with ForceCommand with -tt option" -skip:$skip  {
+            Start-SSHDTestDaemon -WorkDir $opensshbinpath -Arguments "-ddd -f $sshdConfigPath -E $sshdlog" -Port $port
+            $matchuser = "matchuser"
+            Add-UserToLocalGroup -UserName $matchuser -Password $password -GroupName $allowGroup1
+
+            $o = ssh  -p $port -tt $matchuser@$server randomcommand
+            # Match block's ForceCommand returns output of "whoami & set SSH_ORIGINAL_COMMAND"
+            $o[0].Contains($matchuser) | Should Be $true
+            $o[1].Contains("randomcommand") | Should Be $true
+
+            Stop-SSHDTestDaemon   -Port $port
+            Remove-UserFromLocalGroup -UserName $matchuser -GroupName $allowGroup1
+        }
     }
 }

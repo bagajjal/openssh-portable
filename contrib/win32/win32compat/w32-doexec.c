@@ -316,7 +316,21 @@ int do_exec_windows(struct ssh *ssh, Session *s, const char *command, int pty) {
 
 	if (pty) {
 		fcntl(s->ptyfd, F_SETFD, FD_CLOEXEC);
-		if (exec_command_with_pty(&pid, shell, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
+		char *pty_cmd = NULL;
+		if (command) {
+			size_t len = strlen(shell) + 1 + strlen(shell_option) + 1 + strlen(command) + 1;
+			pty_cmd = calloc(1, len);
+
+			strcpy_s(pty_cmd, len, shell);
+			strcat_s(pty_cmd, len, " ");
+			strcat_s(pty_cmd, len, shell_option);
+			strcat_s(pty_cmd, len, " ");
+			strcat_s(pty_cmd, len, command);
+		} else {
+			pty_cmd = shell;
+		}
+
+		if (exec_command_with_pty(&pid, pty_cmd, pipein[0], pipeout[1], pipeerr[1], s->col, s->row, s->ttyfd) == -1)
 			goto cleanup;
 		close(s->ttyfd);
 		s->ttyfd = -1;

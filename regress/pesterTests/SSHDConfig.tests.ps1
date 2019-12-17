@@ -354,7 +354,7 @@ Match User matchuser
             Remove-UserFromLocalGroup -UserName $matchuser -GroupName $allowGroup1
         }
 
-		It "$tC.$tI - Match User block with ForceCommand with -tt option" -skip:$skip  {
+        It "$tC.$tI - Match User block with ForceCommand with -tt option" -skip:$skip  {
             Start-SSHDTestDaemon -WorkDir $opensshbinpath -Arguments "-ddd -f $sshdConfigPath -E $sshdlog" -Port $port
             $matchuser = "matchuser"
             Add-UserToLocalGroup -UserName $matchuser -Password $password -GroupName $allowGroup1

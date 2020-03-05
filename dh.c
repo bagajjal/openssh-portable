@@ -152,11 +152,40 @@ choose_dh(int min, int wantbits, int max)
 	int best, bestcount, which, linenum;
 	struct dhgroup dhg;
 
+#ifndef WINDOWS
 	if ((f = fopen(_PATH_DH_MODULI, "r")) == NULL) {
 		logit("WARNING: could not open %s (%s), using fixed modulus",
 		    _PATH_DH_MODULI, strerror(errno));
 		return (dh_new_group_fallback(max));
 	}
+#else
+	/* First check the moduli file in the %programdata%\ssh\ directory.
+	 * If not then search for the moduli file in the current executable directory. This file will be updated in new OpenSSH releases.
+	 */
+	if ((f = fopen(_PATH_DH_MODULI, "r")) == NULL) {
+		logit("WARNING: could not open %s (%s)",
+			_PATH_DH_MODULI, strerror(errno));
+
+		int isFallback = 1;
+		extern char* __progdir;
+		if (__progdir) {
+			char moduli_path[PATH_MAX] = { 0 };
+			_snprintf_s(moduli_path, PATH_MAX, _TRUNCATE, "%s\\moduli", __progdir);
+
+			if ((f = fopen(moduli_path, "r")) == NULL) {
+				logit("WARNING: could not open %s (%s)", moduli_path, strerror(errno));
+			} else {
+				logit("Using %s", moduli_path);
+				isFallback = 0;
+			}
+		}
+
+		if (isFallback) {
+			logit("WARNING: using fixed modulus");
+			return (dh_new_group_fallback(max));
+		}
+	}
+#endif
 
 	linenum = 0;
 	best = bestcount = 0;

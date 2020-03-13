@@ -44,6 +44,9 @@
 #include "ssherr.h"
 
 #include "openbsd-compat/openssl-compat.h"
+#ifdef WINDOWS
+#include "sshfileperm.h"
+#endif
 
 static int
 parse_prime(int linenum, char *line, struct dhgroup *dhg)
@@ -184,6 +187,14 @@ choose_dh(int min, int wantbits, int max)
 			logit("WARNING: using fixed modulus");
 			return (dh_new_group_fallback(max));
 		}
+	} else {
+		/* Make sure only system, administrators group have write access otherwise don't use */
+		if (check_secure_file_permission(_PATH_DH_MODULI, NULL, 1) != 0) {
+			logit("WARNING: Permissions for '%s' are too open, using fixed modulus", _PATH_DH_MODULI);
+			return (dh_new_group_fallback(max));
+		}
+
+		logit("Using %s", _PATH_DH_MODULI);
 	}
 #endif
 

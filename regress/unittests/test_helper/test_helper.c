@@ -202,8 +202,9 @@ main(int argc, char **argv)
 	tests();
 
 #ifdef WINDOWS
-	if (isModuliFileCopied)
+	if (isModuliFileCopied) {
 		_wunlink(programdata_moduli_path);
+	}
 #endif
 
 	if (!quiet_mode)

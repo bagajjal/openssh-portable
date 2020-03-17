@@ -166,7 +166,7 @@ choose_dh(int min, int wantbits, int max)
 	 * If not then search for the moduli file in the current executable directory. This file will be updated in new OpenSSH releases.
 	 */
 	if ((f = fopen(_PATH_DH_MODULI, "r")) == NULL) {
-		logit("WARNING: could not open %s (%s)",
+		debug3("Could not open %s (%s)",
 			_PATH_DH_MODULI, strerror(errno));
 
 		int isFallback = 1;
@@ -176,10 +176,14 @@ choose_dh(int min, int wantbits, int max)
 			_snprintf_s(moduli_path, PATH_MAX, _TRUNCATE, "%s\\moduli", __progdir);
 
 			if ((f = fopen(moduli_path, "r")) == NULL) {
-				logit("WARNING: could not open %s (%s)", moduli_path, strerror(errno));
+				debug3("Could not open %s (%s)", moduli_path, strerror(errno));
 			} else {
-				logit("Using %s", moduli_path);
-				isFallback = 0;
+				if (check_secure_file_permission(moduli_path, NULL, 1) != 0) {
+					debug3("Permissions for '%s' are too open", moduli_path);
+				} else {
+					debug3("Using %s", moduli_path);
+					isFallback = 0;
+				}
 			}
 		}
 
@@ -194,7 +198,7 @@ choose_dh(int min, int wantbits, int max)
 			return (dh_new_group_fallback(max));
 		}
 
-		logit("Using %s", _PATH_DH_MODULI);
+		debug3("Using %s", _PATH_DH_MODULI);
 	}
 #endif
 

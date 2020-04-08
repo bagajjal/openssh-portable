@@ -221,14 +221,29 @@ ConEnterRawMode()
 	ScrollBottom = ConVisibleWindowHeight();
 	
 	in_raw_mode = 1;
+
+	/*
+	Consume and ignore the first WINDOW_BUFFER_SIZE_EVENT, as we've triggered it ourselves by updating the console settings above.
+	Not consuming this event can cause a race condition: the event can cause a write to the console to be printed twice as the
+	SIGWINCH interrupt makes the write operation think its failed, and causes it to try again.
+	*/
+	INPUT_RECORD peek_input;
+	int out_count = 0;
+	if (PeekConsoleInputW(GetConsoleInputHandle(), &peek_input, 1, &out_count) && peek_input.EventType == WINDOW_BUFFER_SIZE_EVENT) {
+		ReadConsoleInputW(GetConsoleInputHandle(), &peek_input, 1, &out_count);
+	}
 }
 
 /* Used to Uninitialize the Console */
 void 
 ConExitRawMode()
 {
-	SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), stdin_dwSavedAttributes);
-	SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), stdout_dwSavedAttributes);
+	if (0 == in_raw_mode) {
+		return;
+	}
+
+	SetConsoleMode(GetConsoleInputHandle(), stdin_dwSavedAttributes);
+	SetConsoleMode(GetConsoleOutputHandle(), stdout_dwSavedAttributes);
 
 	if (FALSE == isAnsiParsingRequired) {
 		if (console_out_cp_saved) {
@@ -245,6 +260,8 @@ ConExitRawMode()
 				error("Failed to set console input code page from %d to %d error:%d", CP_UTF8, console_in_cp_saved, GetLastError());
 		}
 	}
+	
+	in_raw_mode = 0;
 }
 
 /* Used to exit the raw mode */

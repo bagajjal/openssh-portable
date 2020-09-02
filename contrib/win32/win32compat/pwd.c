@@ -50,6 +50,7 @@
 static struct passwd pw;
 static char* pw_shellpath = NULL;
 char* shell_command_option = NULL;
+char* shell_arguments = NULL;
 BOOLEAN arg_escape = TRUE;
 
 /* returns 0 on success, and -1 with errno set on failure */
@@ -60,7 +61,7 @@ set_defaultshell()
 	int tmp_len, ret = -1;
 	REGSAM mask = STANDARD_RIGHTS_READ | KEY_QUERY_VALUE | KEY_WOW64_64KEY;
 	wchar_t path_buf[PATH_MAX], option_buf[32];
-	char *pw_shellpath_local = NULL, *command_option_local = NULL;
+	char *pw_shellpath_local = NULL, *command_option_local = NULL, *shell_arguments_local = NULL;
 
 	errno = 0;
 
@@ -79,8 +80,15 @@ set_defaultshell()
 		tmp_len = _countof(option_buf);
 		DWORD size = sizeof(DWORD);
 		DWORD escape_option = 1;
-		if (RegQueryValueExW(reg_key, L"DefaultShellCommandOption", 0, NULL, (LPBYTE)option_buf, &tmp_len) != ERROR_SUCCESS)
-			option_buf[0] = L'\0';
+		if (RegQueryValueExW(reg_key, L"DefaultShellCommandOption", 0, NULL, (LPBYTE)option_buf, &tmp_len) == ERROR_SUCCESS)
+			if ((command_option_local = utf16_to_utf8(option_buf)) == NULL)
+				goto cleanup;
+
+		memset(option_buf, 0, tmp_len * sizeof(wchar_t));
+		if (RegQueryValueExW(reg_key, L"DefaultShellArguments", 0, NULL, (LPBYTE)option_buf, &tmp_len) == ERROR_SUCCESS)
+			if ((shell_arguments_local = utf16_to_utf8(option_buf)) == NULL)
+				goto cleanup;
+
 		if (RegQueryValueExW(reg_key, L"DefaultShellEscapeArguments", 0, NULL, (LPBYTE)&escape_option, &size) == ERROR_SUCCESS)
 			arg_escape = (escape_option != 0) ? TRUE : FALSE;
 	} else {
@@ -95,15 +103,12 @@ set_defaultshell()
 	if ((pw_shellpath_local = utf16_to_utf8(path_buf)) == NULL)
 		goto cleanup;
 
-	if (option_buf[0] != L'\0')
-		if ((command_option_local = utf16_to_utf8(option_buf)) == NULL)
-			goto cleanup;
-
 	convertToBackslash(pw_shellpath_local);
 	to_lower_case(pw_shellpath_local);
 	pw_shellpath = pw_shellpath_local;
 	pw_shellpath_local = NULL;
 	shell_command_option = command_option_local;
+	shell_arguments = shell_arguments_local;
 	command_option_local = NULL;
 
 	ret = 0;

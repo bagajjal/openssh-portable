@@ -110,6 +110,7 @@ set_defaultshell()
 	shell_command_option = command_option_local;
 	shell_arguments = shell_arguments_local;
 	command_option_local = NULL;
+	shell_arguments_local = NULL;
 
 	ret = 0;
 cleanup:
@@ -118,6 +119,9 @@ cleanup:
 
 	if (command_option_local)
 		free(command_option_local);
+
+	if (shell_arguments_local)
+		free(shell_arguments_local);
 
 	return ret;
 }

@@ -60,7 +60,7 @@ set_defaultshell()
 	HKEY reg_key = 0;
 	int tmp_len, ret = -1;
 	REGSAM mask = STANDARD_RIGHTS_READ | KEY_QUERY_VALUE | KEY_WOW64_64KEY;
-	wchar_t path_buf[PATH_MAX], option_buf[32];
+	wchar_t path_buf[PATH_MAX], option_buf[32], arg_buf[PATH_MAX];
 	char *pw_shellpath_local = NULL, *command_option_local = NULL, *shell_arguments_local = NULL;
 
 	errno = 0;
@@ -71,6 +71,7 @@ set_defaultshell()
 
 	path_buf[0] = L'\0';
 	option_buf[0] = L'\0';
+	arg_buf[0] = L'\0';
 
 	tmp_len = _countof(path_buf);
 	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\OpenSSH", 0, mask, &reg_key) == ERROR_SUCCESS) &&
@@ -80,14 +81,12 @@ set_defaultshell()
 		tmp_len = _countof(option_buf);
 		DWORD size = sizeof(DWORD);
 		DWORD escape_option = 1;
-		if (RegQueryValueExW(reg_key, L"DefaultShellCommandOption", 0, NULL, (LPBYTE)option_buf, &tmp_len) == ERROR_SUCCESS)
-			if ((command_option_local = utf16_to_utf8(option_buf)) == NULL)
-				goto cleanup;
+		if (RegQueryValueExW(reg_key, L"DefaultShellCommandOption", 0, NULL, (LPBYTE)option_buf, &tmp_len) != ERROR_SUCCESS)
+			option_buf[0] = L'\0';
 
-		memset(option_buf, 0, tmp_len * sizeof(wchar_t));
-		if (RegQueryValueExW(reg_key, L"DefaultShellArguments", 0, NULL, (LPBYTE)option_buf, &tmp_len) == ERROR_SUCCESS)
-			if ((shell_arguments_local = utf16_to_utf8(option_buf)) == NULL)
-				goto cleanup;
+		tmp_len = _countof(arg_buf);
+		if (RegQueryValueExW(reg_key, L"DefaultShellArguments", 0, NULL, (LPBYTE)arg_buf, &tmp_len) != ERROR_SUCCESS)
+			arg_buf[0] = L'\0';
 
 		if (RegQueryValueExW(reg_key, L"DefaultShellEscapeArguments", 0, NULL, (LPBYTE)&escape_option, &size) == ERROR_SUCCESS)
 			arg_escape = (escape_option != 0) ? TRUE : FALSE;
@@ -102,6 +101,14 @@ set_defaultshell()
 
 	if ((pw_shellpath_local = utf16_to_utf8(path_buf)) == NULL)
 		goto cleanup;
+
+	if (option_buf[0] != L'\0')
+		if ((command_option_local = utf16_to_utf8(option_buf)) == NULL)
+			goto cleanup;
+
+	if (arg_buf[0] != L'\0')
+		if ((shell_arguments_local = utf16_to_utf8(arg_buf)) == NULL)
+			goto cleanup;
 
 	convertToBackslash(pw_shellpath_local);
 	to_lower_case(pw_shellpath_local);

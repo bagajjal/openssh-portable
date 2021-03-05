@@ -523,9 +523,9 @@ auth_openfile(const char *file, struct passwd *pw, int strict_modes,
 #ifdef WINDOWS
 	/* Windows POSIX adapter does not support fdopen() on open(file)*/
 	if ((f = fopen(file, "r")) == NULL) {
-			debug("Could not open %s '%s': %s", file_type, file,
-					strerror(errno));
-			return NULL;
+		debug("Could not open %s '%s': %s", file_type, file,
+			strerror(errno));
+		return NULL;
 	}
 
 	// read permissions for non-admin/non-system accounts are allowed.
